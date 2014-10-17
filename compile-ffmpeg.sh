@@ -2,7 +2,7 @@
 
 # FFmpeg source path
 FFMPEG_SOURCE_PATH="./FFmpeg-n2.4.2"
-FFMPEG_OUTPUT_PATH="./output/lib"
+FFMPEG_OUTPUT_PATH=`pwd`"/output/lib"
 
 # iOS SDK version, eg. 7.1 8.0
 SDK_VERSION="8.0"
@@ -329,4 +329,28 @@ function buildLibFFmpeg()
 # `buildLibFFmpegDebug "armv7 armv7s i386 x86_64 arm64"`
 
 TARGET_ARCHS="armv7 armv7s arm64 i386 x86_64"
-buildLibFFmpeg $TARGET_ARCHS
+
+OPT_DEBUG=no
+
+# 
+until [ $# -eq 0 ]
+do
+	case $1 in
+		"--enable-debug" )
+			OPT_DEBUG=yes
+		;;
+	esac	
+	shift
+done
+
+echo ""
+echo "output: $FFMPEG_OUTPUT_PATH"
+echo "sdk: iOS $SDK_VERSION -sdk iphoneos$SDK_VERSION"
+echo "debug: $OPT_DEBUG"
+echo ""
+
+if [ "$OPT_DEBUG" == "no" ]; then
+	buildLibFFmpeg $TARGET_ARCHS
+else
+	buildLibFFmpegDebug $TARGET_ARCHS
+fi
