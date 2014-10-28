@@ -1,20 +1,46 @@
 #!/bin/sh
 
+CP=`pwd`
 # FFmpeg source path
 FFMPEG_SOURCE_PATH="./FFmpeg-n2.4.2"
-FFMPEG_OUTPUT_PATH=`pwd`"/output/lib"
+FFMPEG_OUTPUT_PATH="${CP}/output/lib"
+
+# xcode developer home path
+XCODE_DEVHOME="/Applications/Xcode.app/Contents/Developer"
+GCC_PATH="${XCODE_DEVHOME}/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang"
+GASPREP_DEST_PATH="/usr/local/bin"
 
 # iOS SDK version, eg. 7.1 8.0
 SDK_VERSION="8.0"
 IPHONEOS_VERSION_MIN="6.0"
 
-XCODE_PATH='/Applications/Xcode.app/Contents/Developer/Platforms'
-GCC_PATH='/Applications/XCode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang'
-GASPREP_DEST_PATH='/usr/local/bin'
-PLATOFRM_PATH_SIM='/iPhoneSimulator.platform'
-PLATOFRM_PATH_IOS='/iPhoneOS.platform'
-SDK_PATH_SIM="/Developer/SDKs/iPhoneSimulator${SDK_VERSION}.sdk"
-SDK_PATH_IOS="/Developer/SDKs/iPhoneOS${SDK_VERSION}.sdk"
+if [ ! -d "${XCODE_DEVHOME}/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS${SDK_VERSION}.sdk" ]; then
+	SDK_VERSION=""
+fi
+
+if [[ "${SDK_VERSION}" == "" ]]; then
+	if [ -d "${XCODE_DEVHOME}/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS8.1.sdk" ]; then
+		SDK_VERSION="8.1"
+	fi
+fi
+if [[ "${SDK_VERSION}" == "" ]]; then
+	if [ -d "${XCODE_DEVHOME}/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS8.0.sdk" ]; then
+		SDK_VERSION="8.0"
+	fi
+fi
+if [[ "${SDK_VERSION}" == "" ]]; then
+	if [ -d "${XCODE_DEVHOME}/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS7.1.sdk" ]; then
+		SDK_VERSION="7.1"
+	fi
+fi
+if [[ "${SDK_VERSION}" == "" ]]; then
+	if [ -d "${XCODE_DEVHOME}/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS7.0.sdk" ]; then
+		SDK_VERSION="7.0"
+	fi
+fi
+
+PLATOFRM_SDK_PATH_IOS="/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS${SDK_VERSION}.sdk"
+PLATOFRM_SDK_PATH_SIM="/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator${SDK_VERSION}.sdk"
 
 ########### FFMPEG_BUILD_ARGS_COMMON
 FFMPEG_ARGS=""
@@ -90,12 +116,12 @@ FFMPEG_BUILD_ARGS_SIMX86=$FFMPEG_ARGS
 ########### FFMPEG_BUILD_ARGS_SIMX86_64
 FFMPEG_ARGS=""
 FFMPEG_ARGS="$FFMPEG_ARGS --assert-level=2"
-FFMPEG_ARGS="$FFMPEG_ARGS --disable-mmx"
+#FFMPEG_ARGS="$FFMPEG_ARGS --disable-mmx"
 FFMPEG_ARGS="$FFMPEG_ARGS --arch=x86_64"
 FFMPEG_ARGS="$FFMPEG_ARGS --cpu=x86_64"
 FFMPEG_ARGS="$FFMPEG_ARGS --extra-ldflags='-arch x86_64 -miphoneos-version-min=${IPHONEOS_VERSION_MIN}'"
 FFMPEG_ARGS="$FFMPEG_ARGS --extra-cflags='-arch x86_64 -miphoneos-version-min=${IPHONEOS_VERSION_MIN}'"
-FFMPEG_ARGS="$FFMPEG_ARGS --disable-asm"
+#FFMPEG_ARGS="$FFMPEG_ARGS --disable-asm"
 FFMPEG_ARGS="$FFMPEG_ARGS --prefix=x86_64"
 FFMPEG_BUILD_ARGS_SIMX86_64=$FFMPEG_ARGS
 
@@ -103,7 +129,7 @@ FFMPEG_BUILD_ARGS_SIMX86_64=$FFMPEG_ARGS
 FFMPEG_ARGS=""
 FFMPEG_ARGS="$FFMPEG_ARGS --cc=${GCC_PATH}"
 FFMPEG_ARGS="$FFMPEG_ARGS --as='${GASPREP_DEST_PATH}/gas-preprocessor.pl ${GCC_PATH}'"
-FFMPEG_ARGS="$FFMPEG_ARGS --sysroot=${XCODE_PATH}${PLATOFRM_PATH_SIM}${SDK_PATH_SIM}"
+FFMPEG_ARGS="$FFMPEG_ARGS --sysroot=${XCODE_DEVHOME}${PLATOFRM_SDK_PATH_SIM}"
 FFMPEG_BUILD_ARGS_GCC_SIM=$FFMPEG_ARGS
 #echo $FFMPEG_BUILD_ARGS_GCC_SIM
 
@@ -111,7 +137,7 @@ FFMPEG_BUILD_ARGS_GCC_SIM=$FFMPEG_ARGS
 FFMPEG_ARGS=""
 FFMPEG_ARGS="$FFMPEG_ARGS --cc=${GCC_PATH}"
 FFMPEG_ARGS="$FFMPEG_ARGS --as='${GASPREP_DEST_PATH}/gas-preprocessor.pl ${GCC_PATH}'"
-FFMPEG_ARGS="$FFMPEG_ARGS --sysroot=${XCODE_PATH}${PLATOFRM_PATH_IOS}${SDK_PATH_IOS}"
+FFMPEG_ARGS="$FFMPEG_ARGS --sysroot=${XCODE_DEVHOME}${PLATOFRM_SDK_PATH_IOS}"
 FFMPEG_BUILD_ARGS_GCC_IOS=$FFMPEG_ARGS
 #echo $FFMPEG_BUILD_ARGS_GCC_IOS
 
@@ -169,6 +195,7 @@ function archCompileScrit()
 	# Create script file
 	echo "#!/bin/sh"  > $script
 	
+	echo "# " >> $script	
 	echo "###### FFmpeg compile script for ${arch}" >> $script
 	echo "# " >> $script
 	echo " " >> $script
@@ -187,7 +214,6 @@ function archCompileScrit()
 	echo "echo \"#define PLATFORM_IOS\" >> config.h" >> $script
 
 	# make 
-	echo "make clean" >> $script
 	echo "make" >> $script
 	
 	# copy install
@@ -349,7 +375,7 @@ echo "sdk: iOS $SDK_VERSION -sdk iphoneos$SDK_VERSION"
 echo "debug: $OPT_DEBUG"
 echo ""
 
-if [ "$OPT_DEBUG" == "no" ]; then
+if [[ "$OPT_DEBUG" == "no" ]]; then
 	buildLibFFmpeg $TARGET_ARCHS
 else
 	buildLibFFmpegDebug $TARGET_ARCHS
